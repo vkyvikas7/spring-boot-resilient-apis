@@ -1,8 +1,23 @@
 # spring-boot-resilient-apis
 
+[![ci](https://github.com/vkyvikas7/spring-boot-resilient-apis/actions/workflows/ci.yml/badge.svg)](https://github.com/vkyvikas7/spring-boot-resilient-apis/actions/workflows/ci.yml)
+
 Spring Boot API that hardens against flaky dependencies with Resilience4j — shows debugging failure modes and production-minded feature design.
 
 A small product-availability service calls an inventory dependency. The dependency is an in-process stub whose behaviour you can force, so the failure modes are reproducible. Circuit breaker, retry, bulkhead, and rate limiter sit on that one call. Actuator exposes health, readiness, and the Resilience4j registries.
+
+## Quick start
+
+Requires JDK 17 or newer and Maven 3.8+.
+
+```bash
+git clone https://github.com/vkyvikas7/spring-boot-resilient-apis.git
+cd spring-boot-resilient-apis
+mvn verify
+mvn spring-boot:run
+```
+
+The app listens on `http://localhost:8080`. [Run locally](#run-locally) has the demo curls for each failure mode.
 
 ## Problem
 
