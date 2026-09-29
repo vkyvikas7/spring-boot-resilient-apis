@@ -1,0 +1,20 @@
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventory:
+        wait-duration-in-open-state: 60s
+        automatic-transition-from-open-to-half-open-enabled: false
+  retry:
+    instances:
+      inventory:
+        wait-duration: 5ms
+  ratelimiter:
+    instances:
+      inventory:
+        limit-for-period: 1000
+        limit-refresh-period: 60s
+
+app:
+  inventory:
+    call-timeout: 200ms
+    slow-delay: 500ms
