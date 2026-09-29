@@ -1,0 +1,113 @@
+server:
+  port: 8080
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    whitelabel:
+      enabled: false
+
+spring:
+  application:
+    name: resilient-apis
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+  mvc:
+    problemdetails:
+      enabled: false
+
+logging:
+  pattern:
+    level: "%5p [requestId=%X{requestId:-}]"
+
+info:
+  app:
+    name: spring-boot-resilient-apis
+    description: Spring Boot API that hardens against flaky dependencies with Resilience4j
+    java: "17"
+
+management:
+  info:
+    env:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,circuitbreakerevents,retries,retryevents,ratelimiters,ratelimiterevents,bulkheads,bulkheadevents
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      show-components: always
+      group:
+        readiness:
+          include:
+            - readinessState
+            - circuitBreakers
+        liveness:
+          include:
+            - livenessState
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+
+# Decorator order (lower value = outer aspect):
+#   CircuitBreaker -> Retry -> RateLimiter -> Bulkhead -> inventory stub
+# Resilience4j 2.3 defaults put Retry outside the breaker. These orders reverse
+# that so one HTTP call records a single circuit-breaker outcome. The bulkhead
+# aspect order is fixed (no setter in this release) and is already the innermost.
+# An open circuit fails fast and does not consume retry attempts or rate-limit permits.
+resilience4j:
+  circuitbreaker:
+    circuitBreakerAspectOrder: 1
+    instances:
+      inventory:
+        register-health-indicator: true
+        allow-health-indicator-to-fail: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 5
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        permitted-number-of-calls-in-half-open-state: 1
+        wait-duration-in-open-state: 10s
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - com.portfolio.resilient.downstream.DownstreamCallException
+        ignore-exceptions:
+          - com.portfolio.resilient.downstream.ProductNotFoundException
+          - io.github.resilience4j.ratelimiter.RequestNotPermitted
+          - io.github.resilience4j.bulkhead.BulkheadFullException
+  retry:
+    retryAspectOrder: 2
+    instances:
+      inventory:
+        max-attempts: 3
+        wait-duration: 50ms
+        retry-exceptions:
+          - com.portfolio.resilient.downstream.DownstreamCallException
+        ignore-exceptions:
+          - com.portfolio.resilient.downstream.ProductNotFoundException
+  ratelimiter:
+    rateLimiterAspectOrder: 3
+    instances:
+      inventory:
+        register-health-indicator: true
+        limit-for-period: 100
+        limit-refresh-period: 30s
+        timeout-duration: 0s
+  bulkhead:
+    instances:
+      inventory:
+        max-concurrent-calls: 5
+        max-wait-duration: 0ms
+
+app:
+  inventory:
+    call-timeout: 400ms
+    slow-delay: 800ms
+    flaky-failures-before-success: 2
+    default-mode: SUCCESS
